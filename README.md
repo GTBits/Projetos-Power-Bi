@@ -57,4 +57,4 @@ Utilizei o **Power BI** para transformar os dados brutos de movimentação em um
 
 ### 👨‍💻 Autor
 Desenvolvido por **Gabriel**
-*Conecte-se comigo no [LinkedIn](SEU_LINK_DO_LINKEDIN)*
+*Conecte-se comigo no [LinkedIn]https://www.linkedin.com/in/gabriel-travassos-739306268/*
