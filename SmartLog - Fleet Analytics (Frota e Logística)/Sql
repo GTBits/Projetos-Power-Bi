@@ -1,0 +1,245 @@
+/*
+============================================================
+PROJETO: SmartLog - Fleet Analytics (Versão Completa 2.0)
+OBJETIVO: Banco de dados completo para portfólio de Data Analytics
+ESTRUTURA: Star Schema / Snowflake (Fatos e Dimensões)
+AUTOR: Gabriel (GTBits)
+============================================================
+*/
+
+USE master;
+GO
+
+-- 1. RESET DO AMBIENTE
+-- Derruba conexões existentes e recria o banco do zero
+IF EXISTS (SELECT * FROM sys.databases WHERE name = 'Logistica_DB')
+BEGIN
+    ALTER DATABASE Logistica_DB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE Logistica_DB;
+END
+GO
+
+CREATE DATABASE Logistica_DB;
+GO
+
+USE Logistica_DB;
+GO
+
+-- ============================================================
+-- 2. CRIAÇÃO DAS TABELAS DIMENSÃO (CADASTROS)
+-- ============================================================
+
+PRINT 'Criando Dimensões...';
+
+-- 2.1 Veículos
+CREATE TABLE Veiculos (
+    ID_Veiculo INT PRIMARY KEY,
+    Placa VARCHAR(10),
+    Modelo VARCHAR(50),
+    Tipo VARCHAR(20),
+    Capacidade_Carga_Ton DECIMAL(10,2)
+);
+
+INSERT INTO Veiculos VALUES 
+(1, 'ABC-1234', 'Scania R450', 'Pesado', 40),
+(2, 'XYZ-5678', 'Volvo FH 540', 'Pesado', 45),
+(3, 'DEF-9012', 'Mercedes Accelo', 'Médio', 10),
+(4, 'GHI-3456', 'VW Delivery', 'Leve', 3),
+(5, 'JKL-7890', 'Ford Cargo', 'Médio', 12),
+(6, 'MNO-1122', 'Volvo VM 330', 'Médio', 14), -- Adicionei + diversidade
+(7, 'PQR-3344', 'DAF XF 105', 'Pesado', 42),
+(8, 'STU-5566', 'Iveco Daily', 'Leve', 3.5);
+
+-- 2.2 Motoristas
+CREATE TABLE Motoristas (
+    ID_Motorista INT PRIMARY KEY,
+    Nome VARCHAR(100),
+    CNH_Categoria VARCHAR(2),
+    Data_Contratacao DATE,
+    Salario_Base DECIMAL(10,2)
+);
+
+INSERT INTO Motoristas VALUES 
+(1, 'Carlos Silva', 'E', '2023-01-15', 3500),
+(2, 'Roberto Mendes', 'E', '2022-05-20', 3600),
+(3, 'Fernanda Souza', 'D', '2024-02-10', 3200),
+(4, 'João Pedro', 'E', '2021-11-05', 3800),
+(5, 'Lucas Pereira', 'D', '2023-08-12', 3200),
+(6, 'Mariana Oliveira', 'E', '2022-03-30', 3550),
+(7, 'Paulo Ricardo', 'E', '2020-01-10', 4100),
+(8, 'Rafael Santos', 'D', '2024-01-05', 3100),
+(9, 'Bruno Costa', 'E', '2023-06-18', 3400),
+(10, 'Amanda Lima', 'E', '2021-09-25', 3700);
+
+-- 2.3 Clientes
+CREATE TABLE Clientes (
+    ID_Cliente INT PRIMARY KEY,
+    Nome_Empresa VARCHAR(100),
+    Cidade VARCHAR(50),
+    Estado VARCHAR(2),
+    Setor VARCHAR(50)
+);
+
+INSERT INTO Clientes VALUES 
+(1, 'Mineração Vale do Sol', 'Belo Horizonte', 'MG', 'Mineração'),
+(2, 'Construtora Forte', 'São Paulo', 'SP', 'Construção'),
+(3, 'AgroBusiness S.A.', 'Goiânia', 'GO', 'Agronegócio'),
+(4, 'Siderúrgica Metal', 'Volta Redonda', 'RJ', 'Indústria'),
+(5, 'Supermercados Big', 'Curitiba', 'PR', 'Varejo'),
+(6, 'Porto Seco Log', 'Santos', 'SP', 'Logística'),
+(7, 'Cimento Tupi', 'Montes Claros', 'MG', 'Indústria'),
+(8, 'Grãos do Sul', 'Porto Alegre', 'RS', 'Agronegócio');
+
+-- 2.4 Oficinas (Fornecedores)
+CREATE TABLE Oficinas (
+    ID_Oficina INT PRIMARY KEY,
+    Nome_Oficina VARCHAR(100),
+    Cidade VARCHAR(50),
+    Tipo_Contrato VARCHAR(50), 
+    Avaliacao_Servico INT 
+);
+
+INSERT INTO Oficinas VALUES 
+(1, 'Oficina Central da Mina', 'Belo Horizonte', 'Interna', 5),
+(2, 'Diesel Center Vale', 'Itabira', 'Parceira', 4),
+(3, 'Auto Elétrica do Zé', 'Congonhas', 'Emergencia', 3),
+(4, 'Truck Service Express', 'Betim', 'Parceira', 4),
+(5, 'Mecânica Pesada Global', 'Ouro Preto', 'Parceira', 5);
+
+-- 2.5 Rotas Padrão
+CREATE TABLE Rotas_Padrao (
+    ID_Rota INT PRIMARY KEY,
+    Nome_Rota VARCHAR(100),
+    Distancia_Padrao_KM DECIMAL(10,2),
+    Tempo_Estimado_Horas DECIMAL(10,1),
+    Tipo_Terreno VARCHAR(50)
+);
+
+INSERT INTO Rotas_Padrao VALUES
+(1, 'Mina A -> Porto Seco', 450.00, 8.0, 'Asfalto'),
+(2, 'Mina B -> Siderúrgica', 120.50, 3.5, 'Misto'),
+(3, 'Centro CD -> Cliente Capital', 50.00, 1.5, 'Asfalto'),
+(4, 'Mina A -> Barragem', 15.00, 0.8, 'Terra'),
+(5, 'Inter-Estadual Log', 850.00, 14.0, 'Asfalto');
+GO
+
+-- ============================================================
+-- 3. CRIAÇÃO DAS TABELAS FATO (HISTÓRICO)
+-- ============================================================
+
+PRINT 'Criando Tabelas Fato...';
+
+-- 3.1 Fato Viagens (Agora já nasce conectada com tudo)
+CREATE TABLE Viagens (
+    ID_Viagem INT PRIMARY KEY,
+    ID_Veiculo INT,    -- FK Veiculos
+    ID_Motorista INT,  -- FK Motoristas
+    ID_Cliente INT,    -- FK Clientes
+    ID_Rota INT,       -- FK Rotas
+    Data_Viagem DATE,
+    Distancia_KM DECIMAL(10,2),
+    Consumo_Combustivel_Litros DECIMAL(10,2),
+    Valor_Frete DECIMAL(10,2),
+    Status_Entrega VARCHAR(20)
+);
+
+-- 3.2 Fato Manutenções
+CREATE TABLE Manutencoes (
+    ID_Manutencao INT PRIMARY KEY IDENTITY(1,1),
+    ID_Veiculo INT,    -- FK Veiculos
+    ID_Oficina INT,    -- FK Oficinas
+    Data_Entrada DATE,
+    Custo_Total DECIMAL(10,2),
+    Descricao_Servico VARCHAR(200),
+    Tipo_Manutencao VARCHAR(20)
+);
+GO
+
+-- ============================================================
+-- 4. GERAÇÃO DE MASSA DE DADOS (ETL SIMULADO)
+-- ============================================================
+
+PRINT 'Gerando 5.000 Viagens com relacionamentos cruzados...';
+SET NOCOUNT ON;
+
+DECLARE @i INT = 1;
+-- Variáveis para sorteio
+DECLARE @RandVeiculo INT, @RandMot INT, @RandCli INT, @RandRota INT;
+DECLARE @RandDist DECIMAL(10,2), @RandFrete DECIMAL(10,2);
+DECLARE @RandStatus VARCHAR(20);
+
+WHILE @i <= 5000
+BEGIN
+    -- Sorteios aleatórios para cada linha
+    SET @RandVeiculo = (ABS(CHECKSUM(NEWID())) % 8) + 1; -- 1 a 8
+    SET @RandMot     = (ABS(CHECKSUM(NEWID())) % 10) + 1; -- 1 a 10
+    SET @RandCli     = (ABS(CHECKSUM(NEWID())) % 8) + 1; -- 1 a 8
+    SET @RandRota    = (ABS(CHECKSUM(NEWID())) % 5) + 1; -- 1 a 5
+    SET @RandDist    = (ABS(CHECKSUM(NEWID())) % 800) + 50;
+    SET @RandFrete   = (ABS(CHECKSUM(NEWID())) % 5000) + 500;
+    SET @RandStatus  = CHOOSE((ABS(CHECKSUM(NEWID())) % 3) + 1, 'Concluída', 'Concluída', 'Atrasada');
+
+    INSERT INTO Viagens (ID_Viagem, ID_Veiculo, ID_Motorista, ID_Cliente, ID_Rota, Data_Viagem, Distancia_KM, Consumo_Combustivel_Litros, Valor_Frete, Status_Entrega)
+    VALUES (
+        @i,
+        @RandVeiculo,
+        @RandMot,
+        @RandCli,
+        @RandRota,
+        DATEADD(DAY, -(ABS(CHECKSUM(NEWID())) % 730), '20260127'), -- Últimos 2 anos
+        @RandDist,
+        0, -- Placeholder
+        @RandFrete,
+        @RandStatus
+    );
+    SET @i = @i + 1;
+END;
+GO
+
+PRINT 'Gerando 200 Manutenções...';
+DECLARE @j INT = 1;
+WHILE @j <= 200
+BEGIN
+    INSERT INTO Manutencoes (ID_Veiculo, ID_Oficina, Data_Entrada, Custo_Total, Descricao_Servico, Tipo_Manutencao)
+    VALUES (
+        (ABS(CHECKSUM(NEWID())) % 8) + 1, -- Veículo 1 a 8
+        (ABS(CHECKSUM(NEWID())) % 5) + 1, -- Oficina 1 a 5
+        DATEADD(DAY, -(ABS(CHECKSUM(NEWID())) % 365), GETDATE()), 
+        (ABS(CHECKSUM(NEWID())) % 5000) + 500, 
+        'Manutenção Geral e Troca de Peças', 
+        CASE WHEN (ABS(CHECKSUM(NEWID())) % 2) = 0 THEN 'Preventiva' ELSE 'Corretiva' END
+    );
+    SET @j = @j + 1;
+END;
+GO
+
+-- ============================================================
+-- 5. LÓGICA DE NEGÓCIO (DATA CLEANING)
+-- ============================================================
+
+PRINT 'Calculando Consumo Físico...';
+-- Atualiza o consumo baseado na distância e um fator de aleatoriedade para não ficar linear
+UPDATE Viagens 
+SET Consumo_Combustivel_Litros = Distancia_KM / (2.5 + (ABS(CHECKSUM(NEWID())) % 3));
+GO
+
+-- ============================================================
+-- 6. VALIDAÇÃO FINAL
+-- ============================================================
+
+PRINT 'Banco Criado com Sucesso! Exibindo resumo...';
+
+-- Query para provar que as tabelas conversam (JOIN de 5 tabelas)
+SELECT TOP 10
+    v.Placa,
+    m.Nome as 'Motorista',
+    c.Nome_Empresa as 'Cliente',
+    r.Nome_Rota,
+    t.Data_Viagem,
+    t.Valor_Frete
+FROM Viagens t
+INNER JOIN Veiculos v ON t.ID_Veiculo = v.ID_Veiculo
+INNER JOIN Motoristas m ON t.ID_Motorista = m.ID_Motorista
+INNER JOIN Clientes c ON t.ID_Cliente = c.ID_Cliente
+INNER JOIN Rotas_Padrao r ON t.ID_Rota = r.ID_Rota
+ORDER BY t.Data_Viagem DESC;
