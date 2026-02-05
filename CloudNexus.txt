@@ -1,0 +1,15 @@
+# CloudNexus: Dashboard de Performance SaaS e Health Score
+
+### 🎯 Objetivo do Projeto
+Análise de indicadores de suporte e faturamento para uma empresa de infraestrutura em nuvem (SaaS), focando em retenção de clientes e eficiência operacional.
+
+### 🛠️ Tecnologias Utilizadas
+* **SQL Server**: Modelagem de dados e geração de massa de dados estocástica.
+* **Power BI**: Criação de dashboards interativos.
+* **DAX**: Cálculos avançados de Health Score e taxas de SLA.
+
+### 📊 Principais Insights & Métricas
+* **Health Score (0-100):** Métrica ponderada (Uso, Satisfação e Atrito) para prever risco de Churn.
+* **Taxa de Resolução (SLA):** Meta de 85% alcançada através de otimização de fluxos.
+* **Matriz de Risco:** Identificação visual de clientes com alto volume de tickets e baixo consumo.
+
